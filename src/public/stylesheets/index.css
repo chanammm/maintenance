@@ -89,6 +89,10 @@ body ul li, body ol li {
   margin-right: 0;
 }
 
+.container .photo {
+  display: none;
+}
+
 .container .footer {
   width: 100%;
   position: absolute;
