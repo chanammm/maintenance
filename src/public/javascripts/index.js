@@ -1,15 +1,47 @@
 import "../stylesheets/index.min.css";
 import json from "../json/conf.json";
+let xml = new XMLHttpRequest(),
+    httpData = 'https://case.cbcoffee.cn/',
+    nextId = null,
+    prevId = null,
+    _eq = "",
+    win = window, title = document.getElementsByClassName('title')[0],
+    centent = document.getElementsByClassName('content-box')[0],
+    next = document.getElementsByClassName('next')[0],
+    prev = document.getElementsByClassName('prev')[0]; //全局;
 
 document.addEventListener("DOMContentLoaded", function () {
-    getCententsPage();
+    json.forEach($e => {
+        if ($e.pageId == 0) {
+            title.innerHTML = $e.question.title; //题目抬头
+            $e.question.choice.forEach(($_, eq) => {  //选项列表
+                _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''} data-topId="${$_.topId}"  data-lastId="${$_.lastId}" id="${eq}"><label for="${eq}"> ${$_.key} </label><li>`
+            });
+            centent.innerHTML = _eq;
+            document.querySelectorAll('input').forEach((name, index) => {
+                if (name.getAttribute('name') == 'choice') {
+                    if (document.getElementsByTagName('input')[index].getAttribute('checked')) {
+                        nextId = document.getElementsByTagName('input')[index].getAttribute('data-lastId');
+                        prevId = document.getElementsByTagName('input')[index].getAttribute('data-topId');
+                        next.setAttribute('data-value', nextId);
+                        prev.setAttribute('data-value', prevId);
+                    }
+                }
+            });
+        };
+        return false;
+    })
     document.getElementsByClassName('next')[0].addEventListener('click', function (e) {
-        // getCententsPage(e.value);
-        console.log(this)
+        getCententsPage(this.getAttribute('data-value'));
+    });
+    document.getElementsByClassName('prev')[0].addEventListener('click', function (e) {
+        getCententsPage(this.getAttribute('data-value'));
     })
 
+    // xml.open('GET', httpData + 'create_maintain_flow?userId=891&userToken=1a2039f53653e2ea8bdcbb4cbb7d69ba', false);
+    // xml.send();
 
-    
+
     document.getElementsByClassName('push')[0].addEventListener('click', function (e) {  //上传图片
         document.getElementsByClassName('fileReader')[0].click();
         document.getElementsByClassName('fileReader')[0].onchange = function (e) {
@@ -19,7 +51,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var content;
             reader.onload = function (event) {
                 content = event.target.result;
-                compress(content, 10, function (content0) {
+                compress(content, 450, function (content0) {
                     console.log("final=" + content0.length / 1024 + "KB");
                 });
             };
@@ -31,7 +63,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 })
 
-function compress(content, size, callback) {
+function compress(content, size, callback) {  //压缩拍摄上传
     if (content.length <= size * 1024) {
         callback(content);
         return;
@@ -50,35 +82,34 @@ function compress(content, size, callback) {
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
         let rate = (1024 * size) / content.length;
-        console.log("size=" + size + " rate=" + rate);
-        console.log("**压缩前**" + content.length / 1024 + "KB");
-        document.getElementsByClassName('old')[0].innerHTML = content.length / 1024 + "KB"
+        document.getElementsByClassName('old')[0].src = content;
         //进行压缩
-        content = canvas.toDataURL("image/jpeg", rate);
-        console.log("**压缩后**" + content.length / 1024 + "KB");
-        document.getElementsByClassName('new')[0].innerHTML = content.length / 1024 + "KB"
+        content = canvas.toDataURL("image/jpeg", 0.2);
+        document.getElementsByClassName('new')[0].src = content;
         callback(content);
     };
 }
 
-function getCententsPage(params) {
-    let win = window, title = document.getElementsByClassName('title')[0], centent = document.getElementsByClassName('content-box')[0], _eq = ""; //全局
-    json.forEach(($e, index) => {
-        if (sessionStorage.getItem('cookies')) {
-            if ($e.pageId == sessionStorage.getItem('cookies')) {
-                title.innerHTML = $e.question.title;
-                $e.question.choice.forEach(($_, eq) => {
-                    _eq += `<li data-lastId="${$_.lastId}" data-topId="${$_.topId}"> <input type="radio" name="choice" id="${eq}"><label for="${eq}"> ${$_.key} </label><li>`
+function getCententsPage(params) {  //本地缓存 填报进度
+    _eq = "";
+    json.forEach($e => {
+        if (nextId && prevId) {
+            if ($e.pageId == params) {
+                title.innerHTML = $e.question.title; //题目抬头
+                $e.question.choice.forEach(($_, eq) => {  //选项列表
+                    _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''} data-topId="${$_.topId}"  data-lastId="${$_.lastId}" id="${eq}"><label for="${eq}"> ${$_.key.replace("$", '<input class="_int_" type="number">')} </label><li>`
                 });
                 centent.innerHTML = _eq;
-            };
-        } else {
-            if ($e.pageId == 0) {
-                title.innerHTML = $e.question.title;
-                $e.question.choice.forEach(($_, eq) => {
-                    _eq += `<li data-lastId="${$_.lastId}" data-topId="${$_.topId}"> <input type="radio" name="choice" id="${eq}"><label for="${eq}"> ${$_.key} </label><li>`
+                document.querySelectorAll('input').forEach((name, index) => {
+                    if (name.getAttribute('name') == 'choice') {
+                        if (document.getElementsByTagName('input')[index].getAttribute('checked')) {
+                            nextId = document.getElementsByTagName('input')[index].getAttribute('data-lastId');
+                            prevId = document.getElementsByTagName('input')[index].getAttribute('data-topId');
+                            next.setAttribute('data-value', nextId);
+                            prev.setAttribute('data-value', prevId);
+                        }
+                    }
                 });
-                centent.innerHTML = _eq;
             };
         }
     })

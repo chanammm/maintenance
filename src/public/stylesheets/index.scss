@@ -26,6 +26,19 @@ body{
     overflow: hidden;
     background-color: #fbfbfb;
     position: relative;
+    .logo{
+        height: 90px;
+        width: 90px;
+        margin: 60px auto 50px;
+        border-radius: 50%;
+        box-shadow: 0px 0px 4px #D4D4D4;
+        .img{
+            width: $width;
+            height: $width;
+            background: url(../images/logo.png) no-repeat center center;
+            background-size: $width - 5%;
+        }
+    }
     .title{
         width: $width;
     }
@@ -75,9 +88,19 @@ body{
           input[type=radio] + label:empty:before {
             margin-right: 0;
           }
+          input._int_{
+            background: none;
+            border: none;
+            border-bottom: 1px solid #000;
+          }
     }
     .photo{
         display: none;
+        width: 100%;
+        img{
+            width: 50%;
+            float: left;
+        }
     }
     .footer{
         width: $width;
@@ -101,7 +124,7 @@ body{
             background: #fff100;
             border-radius: 30px;
         }
-        .previous{
+        .prev{
             width: $width - 66.67%;
             float: left;
             background: #fff100;

@@ -7,15 +7,17 @@ html(lang="en")
         title 运维中心
     body
         .container 
+            .logo
+                .img
             .title { % title % }
             .centent 
                 ul.content-box { % centent %}
             .footer
-                .previous 上一步
+                .prev 上一步
                 .home 首页
                 .next 下一步
             .photo
                 button.push 上传
                 input.fileReader(type="file", accept="image/*" style="display:none;" multiple)
-                .old
-                .new
+                img.old
+                img.new
