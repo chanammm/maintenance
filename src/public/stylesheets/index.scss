@@ -41,6 +41,11 @@ body{
     }
     .title{
         width: $width;
+        input{
+            background: none;
+            border: none;
+            border-bottom: 1px solid #000;
+        }
     }
     .centent{
         width: $width;

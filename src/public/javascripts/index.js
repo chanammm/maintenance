@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if ($e.pageId == 0) {
             title.innerHTML = $e.question.title; //题目抬头
             $e.question.choice.forEach(($_, eq) => {  //选项列表
-                _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''} data-topId="${$_.topId}"  data-lastId="${$_.lastId}" id="${eq}"><label for="${eq}"> ${$_.key} </label><li>`
+                _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''} data-topid="${$_.topId}"  data-lastid="${$_.lastId}" id="${eq}"><label for="${eq}"> ${$_.key} </label></li>`
             });
             centent.innerHTML = _eq;
             document.querySelectorAll('input').forEach((name, index) => {
@@ -28,6 +28,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 }
             });
+            document.querySelectorAll('li').forEach((elements, index) => {
+                elements.addEventListener('click', _ele_ => {
+                    _ele_.path[0].dataset['topid'] ? checkedBox({
+                        topId: _ele_.path[0].dataset['topid'],
+                        lastId: _ele_.path[0].dataset['lastid']
+                    }) : null;
+                })
+            })
         };
         return false;
     })
@@ -37,10 +45,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementsByClassName('prev')[0].addEventListener('click', function (e) {
         getCententsPage(this.getAttribute('data-value'));
     })
-
     // xml.open('GET', httpData + 'create_maintain_flow?userId=891&userToken=1a2039f53653e2ea8bdcbb4cbb7d69ba', false);
     // xml.send();
-
 
     document.getElementsByClassName('push')[0].addEventListener('click', function (e) {  //上传图片
         document.getElementsByClassName('fileReader')[0].click();
@@ -90,14 +96,14 @@ function compress(content, size, callback) {  //压缩拍摄上传
     };
 }
 
-function getCententsPage(params) {  //本地缓存 填报进度
+function getCententsPage(params) {  //填报进度
     _eq = "";
     json.forEach($e => {
         if (nextId && prevId) {
             if ($e.pageId == params) {
-                title.innerHTML = $e.question.title; //题目抬头
+                title.innerHTML = $e.question.title.replace('$', '<input class="_int_" type="number">'); //题目抬头
                 $e.question.choice.forEach(($_, eq) => {  //选项列表
-                    _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''} data-topId="${$_.topId}"  data-lastId="${$_.lastId}" id="${eq}"><label for="${eq}"> ${$_.key.replace("$", '<input class="_int_" type="number">')} </label><li>`
+                    _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''} data-topId="${$_.topId}"  data-lastId="${$_.lastId}" id="${eq}"><label for="${eq}"> ${$_.key.replace("$", '<input class="_int_" type="number">')} </label></li>`
                 });
                 centent.innerHTML = _eq;
                 document.querySelectorAll('input').forEach((name, index) => {
@@ -110,7 +116,22 @@ function getCententsPage(params) {  //本地缓存 填报进度
                         }
                     }
                 });
+                document.querySelectorAll('li').forEach((elements, index) => {
+                    elements.addEventListener('click', _ele_ => {
+                        _ele_.path[0].dataset['topid'] ? checkedBox({
+                            topId: _ele_.path[0].dataset['topid'],
+                            lastId: _ele_.path[0].dataset['lastid']
+                        }) : null;
+                    })
+                })
             };
         }
     })
+}
+
+function checkedBox(params) {
+    nextId = params.lastId;
+    prevId = params.topId;
+    next.setAttribute('data-value', nextId);
+    prev.setAttribute('data-value', prevId);
 }
