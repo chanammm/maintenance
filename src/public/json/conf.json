@@ -41,7 +41,7 @@
         "title": "机器外观检查2",
         "pageId": 2, 
         "question": {
-            "title": "",
+            "title": "机器外观检查：",
             "choice":[
                 {
                     "key": "灯箱不亮",
@@ -78,14 +78,14 @@
             "title": "灯箱不亮，检查是否接线脱落",
             "choice":[
                 {
-                    "key": "否，接线良好灯箱依旧不亮，登记上报客服",
+                    "key": "否，接线良好灯箱依旧不亮，登记上报",
                     "topId": 2,
-                    "lastId": 21
+                    "lastId": 7
                 },
                 {
-                    "key": "是，接好后登记上报客服",
+                    "key": "是，接好后登记上报",
                     "topId": 2,
-                    "lastId": 21
+                    "lastId": 7
                 }
             ]
         }
@@ -184,7 +184,7 @@
                 {
                     "key": "有蚊虫，拍照登记上传客服，清理物料，停机除虫处理，贴上停机保养中",
                     "topId": 8,
-                    "lastId": 10
+                    "lastId": 21
                 }
             ]
         }
@@ -240,30 +240,30 @@
         "title": "运维后盘点清洁",
         "pageId": 13,
         "question": {
-            "title": "",
+            "title": "运维后盘点清洁：",
             "choice":[
                 {
-                    "key": "确认大门已经关闭",
+                    "key": "1、确认大门已经关闭",
                     "topId": 12,
                     "lastId": 22
                 },
                 {
-                    "key": "确认小门已经关闭",
+                    "key": "2、确认小门已经关闭",
                     "topId": 12,
                     "lastId": 22
                 },
                 {
-                    "key": "确认屏幕是否正常",
+                    "key": "3、确认屏幕是否正常",
                     "topId": 12,
                     "lastId": 22
                 },
                 {
-                    "key": "确认制作测试杯",
+                    "key": "4、确认制作测试杯",
                     "topId": 12,
                     "lastId": 22
                 },
                 {
-                    "key": "确认机器外观整洁",
+                    "key": "5、确认机器外观整洁",
                     "topId": 12,
                     "lastId": 22
                 }
@@ -375,7 +375,7 @@
         "title": "物料添加2",
         "pageId": 18,
         "question": {
-            "title": "",
+            "title": "物料添加：",
             "choice":[
                 {
                     "key": "1号料仓 $g",
@@ -429,35 +429,35 @@
         "title": "运维后盘点",
         "pageId": 19,
         "question": {
-            "title": "",
+            "title": "运维后盘点：",
             "choice":[
                 {
-                    "key": "确认出料口整洁",
+                    "key": "1、确认出料口整洁",
                     "topId": 17,
                     "lastId": 20
                 },
                 {
-                    "key": "确认上传最新物料数据",
+                    "key": "2、确认上传最新物料数据",
                     "topId": 17,
                     "lastId": 20
                 },
                 {
-                    "key": "确认大门已关闭",
+                    "key": "3、确认大门已关闭",
                     "topId": 17,
                     "lastId": 20
                 },
                 {
-                    "key": "确认小门已关闭",
+                    "key": "4、确认小门已关闭",
                     "topId": 17,
                     "lastId": 20
                 },
                 {
-                    "key": "确认屏幕能点击购买",
+                    "key": "5、确认屏幕能点击购买",
                     "topId": 17,
                     "lastId": 20
                 },
                 {
-                    "key": "确认制作测试杯",
+                    "key": "6、确认制作测试杯",
                     "topId": 17,
                     "lastId": 20
                 }
@@ -487,15 +487,15 @@
         "title": "登记拍照",
         "pageId": 21,
         "question": {
-            "title": "",
+            "title": "登记拍照",
             "choice":[
                 {
-                    "key": "请输入内容",
+                    "key": "<textarea placeholder=\"请输入内容\" resize=\"auto\"></textarea>",
                     "topId": 0,
                     "lastId": 22
                 },
                 {
-                    "key": "...",
+                    "key": "<input type=\"file\" name=\"createImage\" placeholder=\"createImage\">",
                     "topId": 0,
                     "lastId": 22
                 }

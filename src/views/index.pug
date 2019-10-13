@@ -12,12 +12,10 @@ html(lang="en")
             .title { % title % }
             .centent 
                 ul.content-box { % centent %}
+                .photo
+                    .push
+                    input.fileReader(type="file", accept="image/*" style="display:none;" multiple)
             .footer
                 .prev 上一步
                 .home 首页
                 .next 下一步
-            .photo
-                button.push 上传
-                input.fileReader(type="file", accept="image/*" style="display:none;" multiple)
-                img.old
-                img.new
