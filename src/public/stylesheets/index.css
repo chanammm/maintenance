@@ -129,7 +129,7 @@ body ul li, body ol li {
 }
 
 .container .centent .photo {
-  display: block;
+  display: none;
   width: 100%;
   position: relative;
 }

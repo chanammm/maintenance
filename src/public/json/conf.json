@@ -493,11 +493,6 @@
                     "key": "<textarea placeholder=\"请输入内容\" resize=\"auto\"></textarea>",
                     "topId": 0,
                     "lastId": 22
-                },
-                {
-                    "key": "<input type=\"file\" name=\"createImage\" placeholder=\"createImage\">",
-                    "topId": 0,
-                    "lastId": 22
                 }
             ]
         }

@@ -13,16 +13,19 @@
  */
 import "../stylesheets/index.min.css";
 import json from "../json/conf.json";
+import $ from './jquery-3.2.1.min';
 let xml = new XMLHttpRequest(),
     httpData = 'https://case.cbcoffee.cn/',
     filePush = 'http://test.cbcoffee.cn:8085/upload_file',
-    assign = localStorage.getItem('token'),
     nextId = null,
     prevId = null,
     index = null,
+    createMaintenance = false,  //创建新的流程
+    assign = JSON.parse(localStorage.getItem('assign')),
     _eq = "",
     forShow = false,
-    win = window, title = document.getElementsByClassName('title')[0],
+    win = window,
+    title = document.getElementsByClassName('title')[0],
     centent = document.getElementsByClassName('content-box')[0],
     next = document.getElementsByClassName('next')[0],
     photo = document.getElementsByClassName('photo')[0],
@@ -38,8 +41,9 @@ document.addEventListener("DOMContentLoaded", function () {
             $e.question.choice.forEach(($_, eq) => {  //选项列表
                 _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''} data-topid="${$_.topId}"  data-lastid="${$_.lastId}" id="${eq}"><label for="${eq}"> ${$_.key} </label></li>`
             });
+            centent.setAttribute('data-page', $e.pageId+ 1); //当前为1
             centent.innerHTML = _eq;
-            document.querySelectorAll('input').forEach((name, index) => {
+            document.querySelectorAll('input').forEach((name, index) => {  //补料输入框
                 if (name.getAttribute('name') == 'choice') {
                     if (document.getElementsByTagName('input')[index].getAttribute('checked')) {
                         nextId = document.getElementsByTagName('input')[index].getAttribute('data-lastId');
@@ -49,7 +53,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 }
             });
-            document.querySelectorAll('li').forEach((elements, index) => {
+            document.querySelectorAll('li').forEach((elements, index) => {  //点选按钮
                 elements.addEventListener('click', _ele_ => {
                     _ele_.path[0].dataset['topid'] ? checkedBox({
                         topId: _ele_.path[0].dataset['topid'],
@@ -92,9 +96,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         method: "POST",
                         url: filePush,
                         data: _$file,
-                        processData: false, //必不可少参数
-                        traditional: true, //比不可少参数
-                        contentType: false,//比不可少参数
+                        processData: false, 
+                        traditional: true, 
+                        contentType: false,
                         headers: {
                           "Content-Type": false
                         //   headers: {'Content-Type':'application/x-www-form-urlencoded'}
@@ -184,7 +188,7 @@ function dataURItoBlob(base64Data) {
 
 
 function getCententsPage(params) {  //填报进度
-    _eq = "", index = params;
+    _eq = "", index = params /* 全局参数 */;
     json.forEach($e => {
         if (nextId && prevId) {
             if ($e.pageId == params) {
@@ -196,11 +200,12 @@ function getCententsPage(params) {  //填报进度
                     id="${eq}">${!forShow ? `<label for="${eq}"> ${$_.key.replace("$", '<input class="_int_" type="number">')} </label>`
                     : `<div> ${$_.key.replace("$", '<input class="_int_" type="number">')} </div>`} </li>`;
                 });
-                if($e.pageId == 3 || $e.pageId == 9 || $e.pageId == 12 || $e.pageId == 20){  //判断是否需要上传图片
+                if($e.pageId == 3 || $e.pageId == 9 || $e.pageId == 12 || $e.pageId == 20 || $e.pageId == 21){  //判断是否需要上传图片
                     photo.style.display = 'block';
                 }else{
                     photo.style.display = 'none';
                 }
+                centent.setAttribute('data-page', $e.pageId+ 1); //当前为
                 centent.innerHTML = _eq;
                 document.querySelectorAll('input').forEach((name, index) => {
                     if (name.getAttribute('name') == 'choice') {
@@ -235,7 +240,27 @@ function getCententsPage(params) {  //填报进度
     }else{
         prev.style.display = 'block';
         next.style.width = '33.33%';
-    }
+    };
+    if(sessionStorage.getItem('hasFlow') == +false){
+        // **
+        axios.get(httpData+ 'create_maintain_flow?maintainerId='+assign.maintainerId+
+        '&machineNumber='+location.search.substr(1).match(new RegExp("(^|&)machineNumber=([^&]*)(&|$)", "i"))[2]+
+        '&flowType='+centent.getAttribute('data-page'))
+        .then(
+            response => {
+                if(response.data.statusCode.status == 6666){
+                    sessionStorage.setItem('maintainFlow',JSON.stringify(response)); //流程ID
+                }
+            }
+          ).catch((error) => {
+            console.log(error)
+          });
+        sessionStorage.removeItem('hasFlow');
+        return;
+    };  //第一页的时候创建运维流程
+    createQuestion({
+        maintainFlowLogId: JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId
+    });
 }
 
 function checkedBox(params) {  //切换选择项目的任务继续Page ID fBizJ8
@@ -243,4 +268,39 @@ function checkedBox(params) {  //切换选择项目的任务继续Page ID fBizJ8
     prevId = params.topId;
     next.setAttribute('data-value', nextId);
     prev.setAttribute('data-value', prevId);
+}
+
+function createQuestion(params) {
+    let _data = {
+        maintainerId: assign.maintainerId,
+        maintainFlowLogId: params.maintainFlowLogId,
+        questionIndex: centent.getAttribute('data-page'),
+        questionType: 2,
+        question: title.innerHTML,
+        answerVal: index,
+        answer: -1,
+        answerPic: -1,
+        isEnd: 0
+    };
+    // axios({
+    //     method: "POST",
+    //     url: httpData+ 'index_maintain_question',
+    //     data: _data,
+    //   }).then(
+    //     response => {
+    //         console.log(response.data)
+    //     }
+    //   ).catch((error) => {
+    //     console.log(error);
+    //   })
+
+      $.ajax({
+        url: httpData+ 'index_maintain_question',
+        type: 'POST',
+        dataType: 'json',
+        data: _data
+    })
+    .done(response => {
+        console.log(response);
+    })
 }
