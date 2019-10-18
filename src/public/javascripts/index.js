@@ -14,16 +14,17 @@
 import "../stylesheets/index.min.css";
 import json from "../json/conf.json";
 import $ from './jquery-3.2.1.min';
-let xml = new XMLHttpRequest(),
-    httpData = 'https://case.cbcoffee.cn/',
+let httpData = 'https://case.cbcoffee.cn/',
     filePush = 'http://test.cbcoffee.cn:8085/upload_file',
     nextId = null,
     prevId = null,
     index = null,
+    radioVal = -1,
     createMaintenance = false,  //创建新的流程
     assign = JSON.parse(localStorage.getItem('assign')),
     _eq = "",
     forShow = false,
+    _clpage = false,  //点击上一页的布尔值
     win = window,
     title = document.getElementsByClassName('title')[0],
     centent = document.getElementsByClassName('content-box')[0],
@@ -41,7 +42,8 @@ document.addEventListener("DOMContentLoaded", function () {
             $e.question.choice.forEach(($_, eq) => {  //选项列表
                 _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''} data-topid="${$_.topId}"  data-lastid="${$_.lastId}" id="${eq}"><label for="${eq}"> ${$_.key} </label></li>`
             });
-            centent.setAttribute('data-page', $e.pageId+ 1); //当前为1
+            centent.setAttribute('data-page', $e.pageId + 1); //当前为1
+            centent.setAttribute('data-type', $e.question.type); //当前为问题类型
             centent.innerHTML = _eq;
             document.querySelectorAll('input').forEach((name, index) => {  //补料输入框
                 if (name.getAttribute('name') == 'choice') {
@@ -65,80 +67,95 @@ document.addEventListener("DOMContentLoaded", function () {
             next.style.width = '100%';
         };
         return false;
-    })
+    });
+    getCententsPage(localStorage.getItem('PageIds')); //默认显示第几个步骤
+    localStorage.getItem('PageIds') ? searchQuerytion({  //刷新查看当前的问题答案
+        id: JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId,
+        index: localStorage.getItem('PageIds')
+    }) : null;
     document.getElementsByClassName('next')[0].addEventListener('click', function (e) {  //下一步的操作
+        localStorage.setItem('PageIds', centent.getAttribute('data-page'));  //缓存当前的页面Id
+        _clpage = false;
         getCententsPage(this.getAttribute('data-value'));
-
+        if (document.querySelectorAll('figure').length > 0) {
+            photo.innerHTML = `<div class="push"></div><input class="fileReader" type="file" accept="image/*" style="display:none;" multiple="multiple">`;
+        }
+        document.getElementsByClassName('push')[0].addEventListener('click', fileImagePush);
     });
     document.getElementsByClassName('prev')[0].addEventListener('click', function (e) {  //上一步的操作
-        getCententsPage(this.getAttribute('data-value'));
+        let _clickPagge = _clpage ? this.getAttribute('data-value')/*第n次点击*/ : localStorage.getItem('PageIds') /*第一次点击*/;
+        _clpage = true;
+        getCententsPage(_clickPagge)
+        searchQuerytion({
+            id: JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId,
+            index: this.getAttribute('data-value')
+        })
+    });
+    document.getElementsByClassName('push')[0].addEventListener('click', fileImagePush);
+});
 
-    })
-    // xml.open('GET', httpData + 'create_maintain_flow?userId=891&userToken=1a2039f53653e2ea8bdcbb4cbb7d69ba', false);
-    // xml.send();
-
-    document.getElementsByClassName('push')[0].addEventListener('click', function (e) {  //上传图片
-        document.getElementsByClassName('fileReader')[0].click();
-        document.getElementsByClassName('fileReader')[0].onchange = function (e) {
-            loading.style.display = 'block';
-            var localFile = this.files[0];
-            var reader = new FileReader();
-            var content;
-            reader.onload = function (event) {
-                content = event.target.result;
-                compress(content, 450, function (contentFile) {
-                    // push image
-                    let _$file = new FormData();
-                    _$file.append('maintainerId', 41);
-                    _$file.append('type', 18);
-                    _$file.append('file', contentFile, 'cc.png');
-                    axios({
-                        method: "POST",
-                        url: filePush,
-                        data: _$file,
-                        processData: false, 
-                        traditional: true, 
-                        contentType: false,
-                        headers: {
-                          "Content-Type": false
-                        //   headers: {'Content-Type':'application/x-www-form-urlencoded'}
-                        },
-                        onUploadProgress:function(progressEvent){ //原生获取上传进度的事件
-                            if(progressEvent.lengthComputable){
-                                //属性lengthComputable主要表明总共需要完成的工作量和已经完成的工作是否可以被测量
-                                //如果lengthComputable为false，就获取不到progressEvent.total和progressEvent.loaded
-                                if(progressEvent.total % progressEvent.loaded == +false){
-                                    setTimeout(()=>{
-                                        loading.style.display = 'none';
-                                    },2000)
-                                }
+function fileImagePush() {  //上传图片
+    document.getElementsByClassName('fileReader')[0].click();
+    document.getElementsByClassName('fileReader')[0].onchange = function (e) {
+        loading.style.display = 'block';
+        var localFile = this.files[0];
+        var reader = new FileReader();
+        var content;
+        reader.onload = function (event) {
+            content = event.target.result;
+            compress(content, 450, function (contentFile) {
+                // push image
+                let _$file = new FormData();
+                _$file.append('maintainerId', 41);
+                _$file.append('type', 18);
+                _$file.append('file', contentFile, 'machineNumber_' + Math.random() + '.png');
+                axios({
+                    method: "POST",
+                    url: filePush,
+                    data: _$file,
+                    processData: false,
+                    traditional: true,
+                    contentType: false,
+                    headers: {
+                        "Content-Type": false
+                    },
+                    onUploadProgress: function (progressEvent) { //原生获取上传进度的事件
+                        if (progressEvent.lengthComputable) {
+                            //属性lengthComputable主要表明总共需要完成的工作量和已经完成的工作是否可以被测量
+                            //如果lengthComputable为false，就获取不到progressEvent.total和progressEvent.loaded
+                            if (progressEvent.total % progressEvent.loaded == +false) {
+                                setTimeout(() => {
+                                    loading.style.display = 'none';
+                                }, 2000)
                             }
                         }
-                      }).then(
-                        response => {
-                            let _imgBox = document.createElement('figure'), _img = document.createElement('img'), _clone = document.createElement('svg'), _use = document.createElement('use');
-                            _imgBox.className = 'hash[imageBox]';
-                            _img.src = response.data.realPath;
-                            _imgBox.appendChild(_img);
-                            _clone.className = 'icon';
-                            _clone.setAttribute('aria-hidden', "true");
-                            _use.setAttribute('xlink:href', "#ym-icon-guanbi");
-                            _clone.appendChild(_use);
-                            _imgBox.appendChild(_clone);
-                            photo.appendChild(_imgBox);
-                        }
-                      ).catch((error) => {
-                        console.log(error);
-                      })
-                });
-            };
-            reader.onerror = function () {
-                alert("error");
-            };
-            reader.readAsDataURL(localFile, "UTF-8");
-        }
-    });
-})
+                    }
+                }).then(
+                    response => {
+                        let _imgBox = document.createElement('figure'), _img = document.createElement('img'), _clone = document.createElement('svg'), _use = document.createElement('use');
+                        _imgBox.className = 'hash[imageBox]';
+                        _img.src = response.data.realPath;
+                        _imgBox.appendChild(_img);
+                        _clone.className = 'icon';
+                        _clone.setAttribute('aria-hidden', "true");
+                        _use.setAttribute('xlink:href', "#ym-icon-guanbi");
+                        _clone.appendChild(_use);
+                        _imgBox.appendChild(_clone);
+                        photo.appendChild(_imgBox);
+                    }
+                ).catch((error) => {
+                    console.log(error);
+                })
+            });
+        };
+        reader.onerror = function () {
+            alert("error");
+        };
+        reader.readAsDataURL(localFile, "UTF-8");
+    }
+};
+
+
 
 function compress(content, size, callback) {  //压缩拍摄上传
     if (content.length <= size * 1024) {
@@ -189,6 +206,11 @@ function dataURItoBlob(base64Data) {
 
 function getCententsPage(params) {  //填报进度
     _eq = "", index = params /* 全局参数 */;
+    if (centent.getAttribute('data-page') - 1 != +false) {  //优先获取 当前页面的Page ID
+        createQuestion({  //提交进度内容
+            maintainFlowLogId: JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId
+        });
+    }
     json.forEach($e => {
         if (nextId && prevId) {
             if ($e.pageId == params) {
@@ -198,109 +220,181 @@ function getCententsPage(params) {  //填报进度
                     _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''}
                     data-topId="${$_.topId}"  data-lastId="${$_.lastId}"
                     id="${eq}">${!forShow ? `<label for="${eq}"> ${$_.key.replace("$", '<input class="_int_" type="number">')} </label>`
-                    : `<div> ${$_.key.replace("$", '<input class="_int_" type="number">')} </div>`} </li>`;
+                            : `<div> ${$_.key.replace("$", '<input class="_int_" type="number">')} </div>`} </li>`;
                 });
-                if($e.pageId == 3 || $e.pageId == 9 || $e.pageId == 12 || $e.pageId == 20 || $e.pageId == 21){  //判断是否需要上传图片
+                if ($e.pageId == 3 || $e.pageId == 9 || $e.pageId == 12 || $e.pageId == 20 || $e.pageId == 21) {  //判断是否需要上传图片
                     photo.style.display = 'block';
-                }else{
+                } else {
                     photo.style.display = 'none';
                 }
-                centent.setAttribute('data-page', $e.pageId+ 1); //当前为
+                centent.setAttribute('data-page', $e.pageId); //当前为
+                centent.setAttribute('data-type', $e.question.type); //当前为问题类型
                 centent.innerHTML = _eq;
                 document.querySelectorAll('input').forEach((name, index) => {
                     if (name.getAttribute('name') == 'choice') {
                         if (document.getElementsByTagName('input')[index].getAttribute('checked')) {
                             nextId = document.getElementsByTagName('input')[index].getAttribute('data-lastId');
                             prevId = document.getElementsByTagName('input')[index].getAttribute('data-topId');
-                            next.setAttribute('data-value', nextId);
-                            prev.setAttribute('data-value', prevId);
+                            next.setAttribute('data-value', nextId);  //下一步
+                            prev.setAttribute('data-value', prevId);   //上一步
+                            radioVal = document.getElementsByTagName('input')[index].parentNode.childNodes[2].innerHTML || -1; // 选择题的答案
                         }
                     }
                 });
                 document.querySelectorAll('li').forEach((elements, index) => {
                     elements.addEventListener('click', _ele_ => {
-                        _ele_.path[0].dataset['topid'] ? checkedBox({
+                        _ele_.path[0].dataset['topid'] ? checkedBox({  //答案切换时候的ID
                             topId: _ele_.path[0].dataset['topid'],
-                            lastId: _ele_.path[0].dataset['lastid']
+                            lastId: _ele_.path[0].dataset['lastid'],
+                            key: _ele_.path[0].computedName
                         }) : null;
                     })
                 })
             };
         }
     });
-    if(params == 0 || params == 22){   //进度不同的按钮文字提示
+    if (params == 0 || params == 22) {   //进度结束与开始的按钮
         prev.style.display = 'none';
         next.style.width = '100%';
-        params == 22 ? (()=>{
+        params == 22 ? (() => {
             next.innerHTML = `完成`;
-            next.addEventListener('click', () =>{
+            next.addEventListener('click', () => {
                 WeixinJSBridge.call('closeWindow');
             }, true)
         })() : null;
-    }else{
+    } else {
         prev.style.display = 'block';
         next.style.width = '33.33%';
     };
-    if(sessionStorage.getItem('hasFlow') == +false){
+    if (sessionStorage.getItem('hasFlow') == +false) {  //第一页的时候创建运维流程
         // **
-        axios.get(httpData+ 'create_maintain_flow?maintainerId='+assign.maintainerId+
-        '&machineNumber='+location.search.substr(1).match(new RegExp("(^|&)machineNumber=([^&]*)(&|$)", "i"))[2]+
-        '&flowType='+centent.getAttribute('data-page'))
-        .then(
-            response => {
-                if(response.data.statusCode.status == 6666){
-                    sessionStorage.setItem('maintainFlow',JSON.stringify(response)); //流程ID
+        axios.get(httpData + 'create_maintain_flow?maintainerId=' + assign.maintainerId +
+            '&machineNumber=' + location.search.substr(1).match(new RegExp("(^|&)machineNumber=([^&]*)(&|$)", "i"))[2] +
+            '&flowType=' + centent.getAttribute('data-page'))
+            .then(
+                response => {
+                    if (response.data.statusCode.status == 6666) {
+                        sessionStorage.setItem('maintainFlow', JSON.stringify(response)); //流程ID
+                    }
                 }
-            }
-          ).catch((error) => {
-            console.log(error)
-          });
+            ).catch((error) => {
+                console.log(error)
+            });
         sessionStorage.removeItem('hasFlow');
         return;
-    };  //第一页的时候创建运维流程
-    createQuestion({
-        maintainFlowLogId: JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId
-    });
+    };
 }
 
 function checkedBox(params) {  //切换选择项目的任务继续Page ID fBizJ8
     nextId = params.lastId;
-    prevId = params.topId;
+    prevId = index;
     next.setAttribute('data-value', nextId);
     prev.setAttribute('data-value', prevId);
+    radioVal = params.key || -1; // 选择题的答案
 }
 
 function createQuestion(params) {
+    let _type_ = centent.getAttribute('data-type'), _pic = -1;
+    switch (_type_) {
+        case '1':  //1-展示页面
+            radioVal = -1;
+            break;
+        case '2':   //1-选择题
+            radioVal = radioVal;
+            break;
+        case '3':   //1-填空题
+            let _text = {};
+            document.querySelectorAll('._int_').forEach((_params, _index) => {
+                _text[_index + 1] = _params.value;
+            });
+            radioVal = JSON.stringify(_text);
+            break;
+        case '4':   //1-图片上传
+            let _img = [];
+            document.querySelectorAll('figure').forEach((_params, _index) => {
+                _img.push(_params.children[0].getAttribute('src'));
+            });
+            _pic = _img.join();
+            if (document.querySelectorAll('textarea').length > 0) {
+                radioVal = document.querySelectorAll('textarea')[0].value;
+            }
+            break;
+        case '5':   //1-物料题
+            let _obj = {};
+            document.querySelectorAll('._int_').forEach((_params, _index) => {
+                _obj[(_index + 1) + '料仓'] = _params.value;
+            });
+            radioVal = JSON.stringify(_obj);
+            break;
+        default:
+            console.log('其他！');
+            break;
+    }
     let _data = {
-        maintainerId: assign.maintainerId,
-        maintainFlowLogId: params.maintainFlowLogId,
-        questionIndex: centent.getAttribute('data-page'),
-        questionType: 2,
-        question: title.innerHTML,
-        answerVal: index,
-        answer: -1,
-        answerPic: -1,
-        isEnd: 0
+        maintainerId: assign.maintainerId,  //当前维护人ID
+        maintainFlowLogId: params.maintainFlowLogId,  //当前流程ID
+        // questionIndex: index,  //当前问题下标
+        questionIndex: localStorage.getItem('PageIds'),  //当前问题下标
+        questionType: _type_,  //问题类型  1-展示页面,2-选择题,3-填空题,4-图片上传,5-物料题
+        question: title.textContent,  //问题标题
+        answerVal: radioVal,  //页面问题答案文本
+        answer: radioVal,  //回显答案
+        answerPic: _pic, //图片保存
+        isEnd: title.innerHTML == `本次维护结束` ? 1 : 0  //流程是否结束
     };
-    // axios({
-    //     method: "POST",
-    //     url: httpData+ 'index_maintain_question',
-    //     data: _data,
-    //   }).then(
-    //     response => {
-    //         console.log(response.data)
-    //     }
-    //   ).catch((error) => {
-    //     console.log(error);
-    //   })
-
-      $.ajax({
-        url: httpData+ 'index_maintain_question',
+    $.ajax({
+        url: httpData + 'index_maintain_question',
         type: 'POST',
         dataType: 'json',
         data: _data
     })
-    .done(response => {
-        console.log(response);
+        .done(response => {
+            // try {
+            //     if(response.statusCode.status == 5070){
+            //         throw new Error(response.statusCode.msg);
+            //     }
+            // } catch (error) {
+            //     alert(error);
+            //     WeixinJSBridge.call('closeWindow');
+            //     return false;
+            // }
+        })
+}
+function searchQuerytion(params) {
+    $.ajax({
+        url: httpData + 'find_maintain_question',
+        type: 'GET',
+        dataType: 'json',
+        data: {
+            maintainerId: assign.maintainerId,
+            maintainFlowId: params.id,
+            questionIndex: centent.getAttribute('data-page')
+        }
     })
+        .done(response => {
+            try {
+                if (response.statusCode.status == 6666) {
+                    json.forEach($e => {
+                        if ($e.pageId == centent.getAttribute('data-page')) {
+                            $e.question.choice.forEach(($_, eq) => {  //选项列表
+                                document.querySelectorAll('input[name=choice]').forEach(_inp =>{
+                                    let _pert = _inp.parentNode;
+                                    if(_pert.childNodes[2].textContent.trim() == response.answer){
+                                        _inp.setAttribute('checked','checked');
+                                    }
+                                })
+                            });
+                            if (response.answerPic != -1) {  //图片
+                                response.answerPic.split(',').forEach(_f =>{
+                                    $('.photo').append(`<figure class="hash[imageBox]"><img src="${ _f }"><svg class="icon" aria-hidden="true"><use xlink:href="#ym-icon-guanbi"></use></svg></figure>`)
+                                })
+                            };
+                        };
+
+                    });
+                }
+            } catch (error) {
+                throw new Error(error);
+            }
+        })
 }
