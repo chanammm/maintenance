@@ -25,6 +25,7 @@ let httpData = 'https://case.cbcoffee.cn/',
     _eq = "",
     forShow = false,
     _clpage = false,  //点击上一页的布尔值
+    flowType = 2, //默认的运维类型
     win = window,
     title = document.getElementsByClassName('title')[0],
     centent = document.getElementsByClassName('content-box')[0],
@@ -35,6 +36,7 @@ let httpData = 'https://case.cbcoffee.cn/',
     axios = require('axios'); //全局;
 
 document.addEventListener("DOMContentLoaded", function () {
+    sessionStorage.setItem('hasFlow', assign.hasFlow); //
     json.forEach($e => {
         if ($e.pageId == 0) {
             index = 0;
@@ -52,14 +54,16 @@ document.addEventListener("DOMContentLoaded", function () {
                         prevId = document.getElementsByTagName('input')[index].getAttribute('data-topId');
                         next.setAttribute('data-value', nextId);
                         prev.setAttribute('data-value', prevId);
+                        radioVal = document.getElementsByTagName('input')[index].parentNode.childNodes[2].innerHTML || -1; // 选择题的答案
                     }
                 }
             });
-            document.querySelectorAll('li').forEach((elements, index) => {  //点选按钮
+            document.querySelectorAll('li').forEach((elements, index) => {
                 elements.addEventListener('click', _ele_ => {
-                    _ele_.path[0].dataset['topid'] ? checkedBox({
+                    _ele_.path[0].dataset['topid'] ? checkedBox({  //答案切换时候的ID
                         topId: _ele_.path[0].dataset['topid'],
-                        lastId: _ele_.path[0].dataset['lastid']
+                        lastId: _ele_.path[0].dataset['lastid'],
+                        key: _ele_.path[0].computedName
                     }) : null;
                 })
             })
@@ -68,26 +72,30 @@ document.addEventListener("DOMContentLoaded", function () {
         };
         return false;
     });
-    getCententsPage(localStorage.getItem('PageIds')); //默认显示第几个步骤
-    localStorage.getItem('PageIds') ? searchQuerytion({  //刷新查看当前的问题答案
-        id: JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId,
-        index: localStorage.getItem('PageIds')
-    }) : null;
+    getCententsPage(sessionStorage.getItem('PageIds')); //默认显示第几个步骤
+    try {
+        sessionStorage.getItem('PageIds') ? searchQuerytion({  //刷新查看当前的问题答案
+            id: assign.maintainFlowId,
+            index: sessionStorage.getItem('PageIds')
+        }) : null;
+    } catch (error) {
+        alert(error.message);
+    }
     document.getElementsByClassName('next')[0].addEventListener('click', function (e) {  //下一步的操作
-        localStorage.setItem('PageIds', centent.getAttribute('data-page'));  //缓存当前的页面Id
+        sessionStorage.setItem('PageIds', centent.getAttribute('data-page'));  //缓存当前的页面Id
         _clpage = false;
-        getCententsPage(this.getAttribute('data-value'));
+        getCententsPage(this.getAttribute('data-value'), true);
         if (document.querySelectorAll('figure').length > 0) {
             photo.innerHTML = `<div class="push"></div><input class="fileReader" type="file" accept="image/*" style="display:none;" multiple="multiple">`;
         }
         document.getElementsByClassName('push')[0].addEventListener('click', fileImagePush);
     });
     document.getElementsByClassName('prev')[0].addEventListener('click', function (e) {  //上一步的操作
-        let _clickPagge = _clpage ? this.getAttribute('data-value')/*第n次点击*/ : localStorage.getItem('PageIds') /*第一次点击*/;
+        let _clickPagge = _clpage ? this.getAttribute('data-value')/*第n次点击*/ : sessionStorage.getItem('PageIds') /*第一次点击*/;
         _clpage = true;
-        getCententsPage(_clickPagge)
+        getCententsPage(_clickPagge, false);
         searchQuerytion({
-            id: JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId,
+            id: assign.maintainFlowId,
             index: this.getAttribute('data-value')
         })
     });
@@ -204,11 +212,11 @@ function dataURItoBlob(base64Data) {
 }
 
 
-function getCententsPage(params) {  //填报进度
+function getCententsPage(params, bool) {  //填报进度
     _eq = "", index = params /* 全局参数 */;
-    if (centent.getAttribute('data-page') - 1 != +false) {  //优先获取 当前页面的Page ID
+    if (centent.getAttribute('data-page') - 1 != +false && bool) {  //优先获取 当前页面的Page ID
         createQuestion({  //提交进度内容
-            maintainFlowLogId: JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId
+            maintainFlowLogId: assign.maintainFlowId
         });
     }
     json.forEach($e => {
@@ -267,19 +275,29 @@ function getCententsPage(params) {  //填报进度
         next.style.width = '33.33%';
     };
     if (sessionStorage.getItem('hasFlow') == +false) {  //第一页的时候创建运维流程
+
+        document.querySelectorAll('input[name=choice]').forEach(_i => {
+            let _pert = _i.parentNode;
+            if (_pert.childNodes[2].textContent.trim() != '补料人员') {
+                flowType = 1;
+            }
+        })
         // **
         axios.get(httpData + 'create_maintain_flow?maintainerId=' + assign.maintainerId +
             '&machineNumber=' + location.search.substr(1).match(new RegExp("(^|&)machineNumber=([^&]*)(&|$)", "i"))[2] +
-            '&flowType=' + centent.getAttribute('data-page'))
+            '&flowType=' + flowType)  //提交流程类型 
             .then(
                 response => {
                     if (response.data.statusCode.status == 6666) {
                         sessionStorage.setItem('maintainFlow', JSON.stringify(response)); //流程ID
+                    } else {
+                        alert(response.data.statusCode.msg);
                     }
                 }
             ).catch((error) => {
                 console.log(error)
             });
+
         sessionStorage.removeItem('hasFlow');
         return;
     };
@@ -322,7 +340,7 @@ function createQuestion(params) {
         case '5':   //1-物料题
             let _obj = {};
             document.querySelectorAll('._int_').forEach((_params, _index) => {
-                _obj[(_index + 1) + '料仓'] = _params.value;
+                _obj[(_index + 1)] = _params.value;
             });
             radioVal = JSON.stringify(_obj);
             break;
@@ -334,7 +352,7 @@ function createQuestion(params) {
         maintainerId: assign.maintainerId,  //当前维护人ID
         maintainFlowLogId: params.maintainFlowLogId,  //当前流程ID
         // questionIndex: index,  //当前问题下标
-        questionIndex: localStorage.getItem('PageIds'),  //当前问题下标
+        questionIndex: sessionStorage.getItem('PageIds'),  //当前问题下标
         questionType: _type_,  //问题类型  1-展示页面,2-选择题,3-填空题,4-图片上传,5-物料题
         question: title.textContent,  //问题标题
         answerVal: radioVal,  //页面问题答案文本
@@ -377,18 +395,24 @@ function searchQuerytion(params) {
                     json.forEach($e => {
                         if ($e.pageId == centent.getAttribute('data-page')) {
                             $e.question.choice.forEach(($_, eq) => {  //选项列表
-                                document.querySelectorAll('input[name=choice]').forEach(_inp =>{
+                                document.querySelectorAll('input[name=choice]').forEach(_inp => {
                                     let _pert = _inp.parentNode;
-                                    if(_pert.childNodes[2].textContent.trim() == response.answer){
-                                        _inp.setAttribute('checked','checked');
+                                    if (_pert.childNodes[2].textContent.trim() == response.answer) {
+                                        _inp.setAttribute('checked', 'checked');
                                     }
                                 })
                             });
                             if (response.answerPic != -1) {  //图片
-                                response.answerPic.split(',').forEach(_f =>{
-                                    $('.photo').append(`<figure class="hash[imageBox]"><img src="${ _f }"><svg class="icon" aria-hidden="true"><use xlink:href="#ym-icon-guanbi"></use></svg></figure>`)
+                                response.answerPic.split(',').forEach(_f => {
+                                    $('.photo').append(`<figure class="hash[imageBox]"><img src="${_f}"><svg class="icon" aria-hidden="true"><use xlink:href="#ym-icon-guanbi"></use></svg></figure>`)
                                 })
                             };
+
+                            if (response.questionIndex == 15 || response.questionIndex == 16 || response.questionIndex == 18) {
+                                Object.values(JSON.parse(response.answer)).forEach((nameValue, index) => {
+                                    document.querySelectorAll('input._int_')[index].value = nameValue;
+                                })
+                            }
                         };
 
                     });
