@@ -86,10 +86,15 @@ document.addEventListener("DOMContentLoaded", function () {
         sessionStorage.setItem('PageIds', centent.getAttribute('data-page'));  //缓存当前的页面Id
         _clpage.push(centent.getAttribute('data-page'));  //输入下一页页码的到数组
 
-        let arr = [];
-        sessionStorage.getItem('_page_') ? arr = sessionStorage.getItem('_page_') : JSON.stringify(_clpage);
-        // console.log(arr);
-        JSON.parse(arr).push(_clpage)
+        let _arr = sessionStorage.getItem('_page_') ? JSON.parse(sessionStorage.getItem('_page_')).push(_clpage) : JSON.stringify(_clpage);
+        
+        console.log(_arr);
+
+        // function unique(arr) {  //数组去重
+        //     return arr.filter(function(item, index, arr){
+        //         return {}.hasOwnProperty(typeof item + item) ? false : (obj[typeof item + item] = true)
+        //     })
+        // }
 
         sessionStorage.setItem('_page_', JSON.stringify(_clpage));
 
@@ -101,17 +106,17 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     document.getElementsByClassName('prev')[0].addEventListener('click', function (e) {  //上一步的操作
         let __page = sessionStorage.getItem('_page_');
-        getCententsPage(__page && JSON.parse(__page).length > 0 ? JSON.parse(__page).pop() : this.getAttribute('data-value'), false);
-        let _arr = JSON.parse(__page);
+        let _arr = __page ? JSON.parse(__page) : [];
             _arr.splice(-1, 1);
-            _arr.forEach(__value => {
+            _arr.length > 0 ? _arr.forEach(__value => {
                 if(__value != this.getAttribute('data-value') || __value == +false) {
                     sessionStorage.setItem('_page_', JSON.stringify(_arr));
-                    if(__value == +false){
+                    if(_arr.length < 1 && __value == +false){
                         sessionStorage.removeItem('_page_');
                     }
                 }
-            })
+            }) : sessionStorage.removeItem('_page_');
+        getCententsPage(__page && JSON.parse(__page).length > 0 ? JSON.parse(__page).pop() : this.getAttribute('data-value'), false);
         searchQuerytion({  //上一步查询 此前提交的答案
             id: assign.maintainFlowId,
             index: this.getAttribute('data-value')
