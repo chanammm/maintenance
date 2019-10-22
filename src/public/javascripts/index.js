@@ -24,7 +24,7 @@ let httpData = 'https://case.cbcoffee.cn/',
     assign = JSON.parse(localStorage.getItem('assign')),
     _eq = "",
     forShow = false,
-    _clpage = false,  //点击上一页的布尔值
+    _clpage = [],  //点击上一页的数组
     flowType = 2, //默认的运维类型
     win = window,
     title = document.getElementsByClassName('title')[0],
@@ -36,9 +36,9 @@ let httpData = 'https://case.cbcoffee.cn/',
     axios = require('axios'); //全局;
 
 document.addEventListener("DOMContentLoaded", function () {
-    sessionStorage.setItem('hasFlow', assign.hasFlow); //
-    json.forEach($e => {
-        if ($e.pageId == 0) {
+    sessionStorage.setItem('hasFlow', assign.hasFlow); //0不存在、1存在流程
+    if (assign.hasFlow != +true) {  //不存在未完成的运维流程
+        json.forEach($e => {
             index = 0;
             title.innerHTML = $e.question.title; //题目抬头
             $e.question.choice.forEach(($_, eq) => {  //选项列表
@@ -47,6 +47,8 @@ document.addEventListener("DOMContentLoaded", function () {
             centent.setAttribute('data-page', $e.pageId + 1); //当前为1
             centent.setAttribute('data-type', $e.question.type); //当前为问题类型
             centent.innerHTML = _eq;
+            prev.style.display = 'none';
+            next.style.width = '100%';
             document.querySelectorAll('input').forEach((name, index) => {  //补料输入框
                 if (name.getAttribute('name') == 'choice') {
                     if (document.getElementsByTagName('input')[index].getAttribute('checked')) {
@@ -67,14 +69,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     }) : null;
                 })
             })
-            prev.style.display = 'none';
-            next.style.width = '100%';
-        };
-        return false;
-    });
-    getCententsPage(sessionStorage.getItem('PageIds')); //默认显示第几个步骤
+        });
+    } else {  //有未完成流程
+        sessionStorage.setItem('PageIds', sessionStorage.getItem('PageIds') ? sessionStorage.getItem('PageIds') : assign.questionIndex);  //缓存当前的页面Id
+        getCententsPage(sessionStorage.getItem('PageIds'));  //默认显示第几个步骤
+    }
     try {
-        sessionStorage.getItem('PageIds') ? searchQuerytion({  //刷新查看当前的问题答案
+        sessionStorage.getItem('PageIds') ? searchQuerytion({  //刷新 查看当前的问题答案
             id: assign.maintainFlowId,
             index: sessionStorage.getItem('PageIds')
         }) : null;
@@ -83,18 +84,35 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     document.getElementsByClassName('next')[0].addEventListener('click', function (e) {  //下一步的操作
         sessionStorage.setItem('PageIds', centent.getAttribute('data-page'));  //缓存当前的页面Id
-        _clpage = false;
+        _clpage.push(centent.getAttribute('data-page'));  //输入下一页页码的到数组
+
+        let arr = [];
+        sessionStorage.getItem('_page_') ? arr = sessionStorage.getItem('_page_') : JSON.stringify(_clpage);
+        // console.log(arr);
+        JSON.parse(arr).push(_clpage)
+
+        sessionStorage.setItem('_page_', JSON.stringify(_clpage));
+
         getCententsPage(this.getAttribute('data-value'), true);
         if (document.querySelectorAll('figure').length > 0) {
             photo.innerHTML = `<div class="push"></div><input class="fileReader" type="file" accept="image/*" style="display:none;" multiple="multiple">`;
         }
-        document.getElementsByClassName('push')[0].addEventListener('click', fileImagePush);
+        document.getElementsByClassName('push')[0].addEventListener('click', fileImagePush);  
     });
     document.getElementsByClassName('prev')[0].addEventListener('click', function (e) {  //上一步的操作
-        let _clickPagge = _clpage ? this.getAttribute('data-value')/*第n次点击*/ : sessionStorage.getItem('PageIds') /*第一次点击*/;
-        _clpage = true;
-        getCententsPage(_clickPagge, false);
-        searchQuerytion({
+        let __page = sessionStorage.getItem('_page_');
+        getCententsPage(__page && JSON.parse(__page).length > 0 ? JSON.parse(__page).pop() : this.getAttribute('data-value'), false);
+        let _arr = JSON.parse(__page);
+            _arr.splice(-1, 1);
+            _arr.forEach(__value => {
+                if(__value != this.getAttribute('data-value') || __value == +false) {
+                    sessionStorage.setItem('_page_', JSON.stringify(_arr));
+                    if(__value == +false){
+                        sessionStorage.removeItem('_page_');
+                    }
+                }
+            })
+        searchQuerytion({  //上一步查询 此前提交的答案
             id: assign.maintainFlowId,
             index: this.getAttribute('data-value')
         })
@@ -146,8 +164,8 @@ function fileImagePush() {  //上传图片
                         _imgBox.appendChild(_img);
                         _clone.className = 'icon';
                         _clone.setAttribute('aria-hidden', "true");
-                        _use.setAttribute('xlink:href', "#ym-icon-guanbi");
-                        _clone.appendChild(_use);
+                        // _use.setAttribute('xlink:href', "#ym-icon-guanbi");
+                        // _clone.appendChild(_use);
                         _imgBox.appendChild(_clone);
                         photo.appendChild(_imgBox);
                     }
@@ -205,7 +223,6 @@ function dataURItoBlob(base64Data) {
     for (var i = 0; i < bytes.length; i++) {
         ia[i] = bytes.charCodeAt(i);
     }
-
     return new Blob([ab], {
         type: 'image/png'
     });
@@ -213,6 +230,7 @@ function dataURItoBlob(base64Data) {
 
 
 function getCententsPage(params, bool) {  //填报进度
+    sessionStorage.setItem('PageIds', sessionStorage.getItem('PageIds') ? sessionStorage.getItem('PageIds') : assign.questionIndex);  //缓存当前的页面Id
     _eq = "", index = params /* 全局参数 */;
     if (centent.getAttribute('data-page') - 1 != +false && bool) {  //优先获取 当前页面的Page ID
         createQuestion({  //提交进度内容
@@ -220,46 +238,44 @@ function getCententsPage(params, bool) {  //填报进度
         });
     }
     json.forEach($e => {
-        if (nextId && prevId) {
-            if ($e.pageId == params) {
-                title.innerHTML = $e.question.title.replace('$', '<input class="_int_" type="number">'); //题目抬头
-                new RegExp("10|11|12|13|15|16|18|19|20|21|22").test($e.pageId) ? forShow = true : forShow = false;
-                $e.question.choice.forEach(($_, eq) => {  //选项列表
-                    _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''}
+        if ($e.pageId == params) {
+            title.innerHTML = $e.question.title.replace('$', '<input class="_int_" type="number">'); //题目抬头
+            new RegExp("10|11|12|13|15|16|18|19|20|21|22").test($e.pageId) ? forShow = true : forShow = false;
+            $e.question.choice.forEach(($_, eq) => {  //选项列表
+                _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''}
                     data-topId="${$_.topId}"  data-lastId="${$_.lastId}"
                     id="${eq}">${!forShow ? `<label for="${eq}"> ${$_.key.replace("$", '<input class="_int_" type="number">')} </label>`
-                            : `<div> ${$_.key.replace("$", '<input class="_int_" type="number">')} </div>`} </li>`;
-                });
-                if ($e.pageId == 3 || $e.pageId == 9 || $e.pageId == 12 || $e.pageId == 20 || $e.pageId == 21) {  //判断是否需要上传图片
-                    photo.style.display = 'block';
-                } else {
-                    photo.style.display = 'none';
-                }
-                centent.setAttribute('data-page', $e.pageId); //当前为
-                centent.setAttribute('data-type', $e.question.type); //当前为问题类型
-                centent.innerHTML = _eq;
-                document.querySelectorAll('input').forEach((name, index) => {
-                    if (name.getAttribute('name') == 'choice') {
-                        if (document.getElementsByTagName('input')[index].getAttribute('checked')) {
-                            nextId = document.getElementsByTagName('input')[index].getAttribute('data-lastId');
-                            prevId = document.getElementsByTagName('input')[index].getAttribute('data-topId');
-                            next.setAttribute('data-value', nextId);  //下一步
-                            prev.setAttribute('data-value', prevId);   //上一步
-                            radioVal = document.getElementsByTagName('input')[index].parentNode.childNodes[2].innerHTML || -1; // 选择题的答案
-                        }
+                        : `<div> ${$_.key.replace("$", '<input class="_int_" type="number">')} </div>`} </li>`;
+            });
+            if ($e.pageId == 3 || $e.pageId == 9 || $e.pageId == 12 || $e.pageId == 20 || $e.pageId == 21) {  //判断是否需要上传图片0
+                photo.style.display = 'block';
+            } else {
+                photo.style.display = 'none';
+            }
+            centent.setAttribute('data-page', $e.pageId); //当前为
+            centent.setAttribute('data-type', $e.question.type); //当前为问题类型
+            centent.innerHTML = _eq;
+            document.querySelectorAll('input').forEach((name, index) => {
+                if (name.getAttribute('name') == 'choice') {
+                    if (document.getElementsByTagName('input')[index].getAttribute('checked')) {
+                        nextId = document.getElementsByTagName('input')[index].getAttribute('data-lastId');
+                        prevId = document.getElementsByTagName('input')[index].getAttribute('data-topId');
+                        next.setAttribute('data-value', nextId);  //下一步
+                        prev.setAttribute('data-value', prevId);   //上一步
+                        radioVal = document.getElementsByTagName('input')[index].parentNode.childNodes[2].innerHTML || -1; // 选择题的答案
                     }
-                });
-                document.querySelectorAll('li').forEach((elements, index) => {
-                    elements.addEventListener('click', _ele_ => {
-                        _ele_.path[0].dataset['topid'] ? checkedBox({  //答案切换时候的ID
-                            topId: _ele_.path[0].dataset['topid'],
-                            lastId: _ele_.path[0].dataset['lastid'],
-                            key: _ele_.path[0].computedName
-                        }) : null;
-                    })
+                }
+            });
+            document.querySelectorAll('li').forEach((elements, index) => {
+                elements.addEventListener('click', _ele_ => {
+                    _ele_.path[0].dataset['topid'] ? checkedBox({  //答案切换时候的ID
+                        topId: _ele_.path[0].dataset['topid'],
+                        lastId: _ele_.path[0].dataset['lastid'],
+                        key: _ele_.path[0].computedName
+                    }) : null;
                 })
-            };
-        }
+            })
+        };
     });
     if (params == 0 || params == 22) {   //进度结束与开始的按钮
         prev.style.display = 'none';
@@ -290,6 +306,7 @@ function getCententsPage(params, bool) {  //填报进度
                 response => {
                     if (response.data.statusCode.status == 6666) {
                         sessionStorage.setItem('maintainFlow', JSON.stringify(response)); //流程ID
+                        sessionStorage.setItem('hasFlow', 1); //
                     } else {
                         alert(response.data.statusCode.msg);
                     }
@@ -298,7 +315,7 @@ function getCententsPage(params, bool) {  //填报进度
                 console.log(error)
             });
 
-        sessionStorage.removeItem('hasFlow');
+        // sessionStorage.removeItem('hasFlow');
         return;
     };
 }
@@ -378,7 +395,7 @@ function createQuestion(params) {
             // }
         })
 }
-function searchQuerytion(params) {
+function searchQuerytion(params) {  //查询特定下标的题目/答案
     $.ajax({
         url: httpData + 'find_maintain_question',
         type: 'GET',
