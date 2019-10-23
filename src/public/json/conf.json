@@ -28,12 +28,12 @@
             "choice":[
                 {
                     "key": "有",
-                    "topId": 0,
+                    "topId": 1,
                     "lastId": 2
                 },
                 {
                     "key": "无",
-                    "topId": 0,
+                    "topId": 1,
                     "lastId": 7
                 }
             ]
@@ -293,12 +293,12 @@
             "choice":[
                 {
                     "key": "否",
-                    "topId": 0,
+                    "topId": 14,
                     "lastId": 17
                 },
                 {
                     "key": "是",
-                    "topId": 0,
+                    "topId": 14,
                     "lastId": 15
                 }
             ]
@@ -513,7 +513,7 @@
             "choice":[
                 {
                     "key": "<textarea placeholder=\"请输入内容\" resize=\"auto\"></textarea>",
-                    "topId": 0,
+                    "topId": 21,
                     "lastId": 22
                 }
             ]
