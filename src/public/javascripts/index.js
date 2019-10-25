@@ -84,6 +84,7 @@ document.addEventListener("DOMContentLoaded", function () {
     } catch (error) {
         alert(error.message);
     }
+
     document.getElementsByClassName('next')[0].addEventListener('click', function (e) {  //下一步的操作
         sessionStorage.setItem('PageIds', centent.getAttribute('data-page'));  //缓存当前的页面Id
         _clpage = [];
@@ -104,6 +105,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         document.getElementsByClassName('push')[0].addEventListener('click', fileImagePush);  //重置上传图片的按钮
     });
+
     document.getElementsByClassName('prev')[0].addEventListener('click', function (e) {  //上一步的操作
         let __page = sessionStorage.getItem('_page_');
         let _arr = __page ? JSON.parse(__page) : [];
@@ -116,7 +118,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
         }) : sessionStorage.removeItem('_page_');
+
         getCententsPage(__page && JSON.parse(__page).length > 0 ? JSON.parse(__page).pop() : this.getAttribute('data-value'), false);
+        // getCententsPage()
+
         searchQuerytion({  //上一步查询 此前提交的答案
             id: assign.maintainFlowId ? assign.maintainFlowId : JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId,
             index: this.getAttribute('data-value')
@@ -249,6 +254,36 @@ function getCententsPage(params, bool) {  //填报进度
             maintainFlowLogId: assign.maintainFlowId ? assign.maintainFlowId : JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId
         });
     }
+    if (sessionStorage.getItem('hasFlow') == +false) {  //第一页的时候创建运维流程
+
+        document.querySelectorAll('input[name=choice]').forEach(_i => {
+            let _pert = _i.parentNode;
+            if (_pert.childNodes[2].textContent.trim() == '补料人员') {
+                _pert.childNodes[1].checked ? flowType = 2 : null;
+            } else if (_pert.childNodes[2].textContent.trim() == '清洗人员') {
+                _pert.childNodes[1].checked ? flowType = 1 : null;
+            }
+        });
+        // **
+        axios.get(httpData + 'create_maintain_flow?maintainerId=' + assign.maintainerId +
+            '&machineNumber=' + location.search.substr(1).match(new RegExp("(^|&)machineNumber=([^&]*)(&|$)", "i"))[2] +
+            '&flowType=' + flowType)  //提交流程类型 
+            .then(
+                response => {
+                    if (response.data.statusCode.status == 6666) {
+                        sessionStorage.setItem('maintainFlow', JSON.stringify(response)); //流程ID
+                        sessionStorage.setItem('hasFlow', 1); //
+                    } else {
+                        alert(response.data.statusCode.msg);
+                    }
+                }
+            ).catch((error) => {
+                console.log(error)
+            });
+
+        sessionStorage.removeItem('hasFlow');
+        return;
+    };
     json.forEach($e => {
         if ($e.pageId == params) {
             title.innerHTML = $e.question.title.replace('$', '<input class="_int_" type="number">'); //题目抬头
@@ -304,37 +339,6 @@ function getCententsPage(params, bool) {  //填报进度
         prev.style.display = 'block';
         next.style.width = '33.33%';
     };
-    if (sessionStorage.getItem('hasFlow') == +false) {  //第一页的时候创建运维流程
-
-        document.querySelectorAll('input[name=choice]').forEach(_i => {
-            let _pert = _i.parentNode;
-            if (_pert.childNodes[2].textContent.trim() == '补料人员') {
-                flowType = 2;
-            } else if (_pert.childNodes[2].textContent.trim() == '清洗人员') {
-                flowType = 1;
-            }
-
-        })
-        // **
-        axios.get(httpData + 'create_maintain_flow?maintainerId=' + assign.maintainerId +
-            '&machineNumber=' + location.search.substr(1).match(new RegExp("(^|&)machineNumber=([^&]*)(&|$)", "i"))[2] +
-            '&flowType=' + flowType)  //提交流程类型 
-            .then(
-                response => {
-                    if (response.data.statusCode.status == 6666) {
-                        sessionStorage.setItem('maintainFlow', JSON.stringify(response)); //流程ID
-                        sessionStorage.setItem('hasFlow', 1); //
-                    } else {
-                        alert(response.data.statusCode.msg);
-                    }
-                }
-            ).catch((error) => {
-                console.log(error)
-            });
-
-        // sessionStorage.removeItem('hasFlow');
-        return;
-    };
 }
 
 function checkedBox(params) {  //切换选择项目的任务继续Page ID fBizJ8
@@ -345,7 +349,7 @@ function checkedBox(params) {  //切换选择项目的任务继续Page ID fBizJ8
     radioVal = params.key || -1; // 选择题的答案
 }
 
-function createQuestion(params) {
+function createQuestion(params) {   //提交填报进度
     let _type_ = centent.getAttribute('data-type'), _pic = -1;
     switch (_type_) {
         case '1':  //1-展示页面
@@ -389,7 +393,7 @@ function createQuestion(params) {
         questionIndex: sessionStorage.getItem('PageIds'),  //当前问题下标
         questionType: _type_,  //问题类型  1-展示页面,2-选择题,3-填空题,4-图片上传,5-物料题
         question: title.textContent,  //问题标题
-        answerVal: radioVal,  //页面问题答案文本
+        answerVal: centent.textContent + `$${sessionStorage.getItem('PageIds')}`,  //页面所有答案文本  以及上一页内容的ID
         answer: radioVal,  //回显答案
         answerPic: _pic, //图片保存
         isEnd: title.innerHTML == `本次维护结束` ? 1 : 0  //流程是否结束
@@ -401,18 +405,25 @@ function createQuestion(params) {
         data: _data
     })
         .done(response => {
-            // try {
-            //     if(response.statusCode.status == 5070){
-            //         throw new Error(response.statusCode.msg);
-            //     }
-            // } catch (error) {
-            //     alert(error);
-            //     WeixinJSBridge.call('closeWindow');
-            //     return false;
-            // }
+            try {   //运维流程已结束
+                if (response.statusCode.status == 5070) {
+                    throw new Error(response.statusCode.msg);
+                }
+            } catch (error) {
+                alert(error);
+                WeixinJSBridge.call('closeWindow');
+                return false;
+            }
         })
 }
 function searchQuerytion(params) {  //查询特定下标的题目/答案
+    if (assign.questionIndex == -1) {
+        if (sessionStorage.getItem('maintainFlow')) {  // 新创建流程 刷新重置
+            centent.setAttribute('data-page', JSON.parse(sessionStorage.getItem('maintainFlow')).data.flowType == 2 ? 14 : 1);
+        } else {  //已有流程未提交 直接刷新重置
+            centent.setAttribute('data-page', assign.flowType == 2 ? 14 : 1);
+        }
+    }
     $.ajax({
         url: httpData + 'find_maintain_question',
         type: 'GET',
@@ -442,14 +453,17 @@ function searchQuerytion(params) {  //查询特定下标的题目/答案
                                 })
                             };
 
-                            if (response.questionIndex == 15 || response.questionIndex == 16 || response.questionIndex == 18) {
+                            if (response.questionIndex == 15 || response.questionIndex == 16 || response.questionIndex == 18) {  //特定的文本答案
                                 Object.values(JSON.parse(response.answer)).forEach((nameValue, index) => {
                                     document.querySelectorAll('input._int_')[index].value = nameValue;
                                 })
                             }
+                            
                         };
 
                     });
+                } else if (response.statusCode.status == 4444) {
+                    getCententsPage(centent.getAttribute('data-page'));
                 }
             } catch (error) {
                 throw new Error(error);
