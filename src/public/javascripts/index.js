@@ -36,8 +36,7 @@ let httpData = 'https://case.cbcoffee.cn/',
     axios = require('axios'); //全局;
 
 document.addEventListener("DOMContentLoaded", function () {
-    sessionStorage.setItem('hasFlow', assign.hasFlow); //0不存在、1存在流程
-    if (assign.hasFlow != +true) {  //不存在未完成的运维流程
+    if ( assign.hasFlow == +true ||sessionStorage.getItem('hasFlow') != +true) {  //不存在未完成的运维流程
         json.forEach($e => {
             if ($e.pageId == +false) {
                 index = 0;
@@ -45,7 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 $e.question.choice.forEach(($_, eq) => {  //选项列表
                     _eq += `<li> <input type="radio" name="choice" ${eq == 0 ? 'checked=checked' : ''} data-topid="${$_.topId}"  data-lastid="${$_.lastId}" id="${eq}"><label for="${eq}"> ${$_.key} </label></li>`
                 });
-                centent.setAttribute('data-page', $e.pageId + 1); //当前为1
+                centent.setAttribute('data-page', $e.pageId); //当前为1
                 centent.setAttribute('data-type', $e.question.type); //当前为问题类型
                 centent.innerHTML = _eq;
                 prev.style.display = 'none';
@@ -54,9 +53,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (name.getAttribute('name') == 'choice') {
                         if (document.getElementsByTagName('input')[index].getAttribute('checked')) {
                             nextId = document.getElementsByTagName('input')[index].getAttribute('data-lastId');
-                            prevId = document.getElementsByTagName('input')[index].getAttribute('data-topId');
                             next.setAttribute('data-value', nextId);
-                            prev.setAttribute('data-value', prevId);
                             radioVal = document.getElementsByTagName('input')[index].parentNode.childNodes[2].innerHTML || -1; // 选择题的答案
                         }
                     }
@@ -72,12 +69,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
             }
         });
+        sessionStorage.setItem('hasFlow', assign.hasFlow); //0不存在、1存在流程
     } else {  //有未完成流程
         sessionStorage.setItem('PageIds', sessionStorage.getItem('PageIds') ? sessionStorage.getItem('PageIds') : assign.questionIndex);  //缓存当前的页面Id
         getCententsPage(sessionStorage.getItem('PageIds'));  //默认显示第几个步骤
     }
     try {
-        sessionStorage.getItem('PageIds') ? searchQuerytion({  //刷新 查看当前的问题答案
+        sessionStorage.getItem('PageIds') && sessionStorage.getItem('PageIds') != 0 ? searchQuerytion({  //刷新 查看当前的问题答案
             id: assign.maintainFlowId ? assign.maintainFlowId : JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId,
             index: sessionStorage.getItem('PageIds')
         }) : null;
@@ -86,19 +84,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     document.getElementsByClassName('next')[0].addEventListener('click', function (e) {  //下一步的操作
+        prev.setAttribute('data-value', centent.getAttribute('data-page'));
         sessionStorage.setItem('PageIds', centent.getAttribute('data-page'));  //缓存当前的页面Id
-        _clpage = [];
-        if (sessionStorage.getItem('_page_')) {
-            _clpage = JSON.parse(sessionStorage.getItem('_page_'));
-            _clpage.push(centent.getAttribute('data-page'));  //输入下一页页码的到数组
-            sessionStorage.setItem('_page_', JSON.stringify(_clpage));
-            let _pageArray_ = uniqueArray(JSON.parse(sessionStorage.getItem('_page_')));
-            sessionStorage.setItem('_page_', JSON.stringify(_pageArray_));
-        } else {
-            _clpage.push(centent.getAttribute('data-page'));  //输入下一页页码的到数组
-            sessionStorage.setItem('_page_', JSON.stringify(_clpage));
-        }
-
+        sessionStorage.setItem('_page_', centent.getAttribute('data-page'));  //上一步的时候ID
         getCententsPage(this.getAttribute('data-value'), true);  //调用下一步的时候传递本次提交的page ID
         if (document.querySelectorAll('figure').length > 0) {  //存在图片组合的标签的时候 创建上传按钮
             photo.innerHTML = `<div class="push"></div><input class="fileReader" type="file" accept="image/*" style="display:none;" multiple="multiple">`;
@@ -107,24 +95,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     document.getElementsByClassName('prev')[0].addEventListener('click', function (e) {  //上一步的操作
-        let __page = sessionStorage.getItem('_page_');
-        let _arr = __page ? JSON.parse(__page) : [];
-        _arr.splice(-1, 1);
-        _arr.length > 0 ? _arr.forEach(__value => {
-            if (__value != this.getAttribute('data-value') || __value == +false) {
-                sessionStorage.setItem('_page_', JSON.stringify(_arr));
-                if (_arr.length < 1 && __value == +false) {
-                    sessionStorage.removeItem('_page_');
-                }
-            }
-        }) : sessionStorage.removeItem('_page_');
-
-        getCententsPage(__page && JSON.parse(__page).length > 0 ? JSON.parse(__page).pop() : this.getAttribute('data-value'), false);
-        // getCententsPage()
-
+        getCententsPage(sessionStorage.getItem('_page_'), false); // 上一步的回显
         searchQuerytion({  //上一步查询 此前提交的答案
             id: assign.maintainFlowId ? assign.maintainFlowId : JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId,
-            index: this.getAttribute('data-value')
+            index: sessionStorage.getItem('_page_')
         })
     });
     document.getElementsByClassName('push')[0].addEventListener('click', fileImagePush);
@@ -198,8 +172,6 @@ function uniqueArray(arr) {  //数组去重
     })
 }
 
-
-
 function compress(content, size, callback) {  //压缩拍摄上传
     if (content.length <= size * 1024) {
         callback(dataURItoBlob(content));
@@ -249,13 +221,12 @@ function dataURItoBlob(base64Data) {
 function getCententsPage(params, bool) {  //填报进度
     sessionStorage.setItem('PageIds', sessionStorage.getItem('PageIds') ? sessionStorage.getItem('PageIds') : assign.questionIndex);  //缓存当前的页面Id
     _eq = "", index = params /* 全局参数 */;
-    if (centent.getAttribute('data-page') - 1 != +false && bool) {  //优先获取 当前页面的Page ID
+    if (centent.getAttribute('data-page') != +false && bool) {  //优先获取 当前页面的Page ID
         createQuestion({  //提交进度内容
             maintainFlowLogId: assign.maintainFlowId ? assign.maintainFlowId : JSON.parse(sessionStorage.getItem('maintainFlow')).data.maintainFlowId
         });
     }
     if (sessionStorage.getItem('hasFlow') == +false) {  //第一页的时候创建运维流程
-
         document.querySelectorAll('input[name=choice]').forEach(_i => {
             let _pert = _i.parentNode;
             if (_pert.childNodes[2].textContent.trim() == '补料人员') {
@@ -280,9 +251,6 @@ function getCententsPage(params, bool) {  //填报进度
             ).catch((error) => {
                 console.log(error)
             });
-
-        sessionStorage.removeItem('hasFlow');
-        return;
     };
     json.forEach($e => {
         if ($e.pageId == params) {
@@ -306,9 +274,7 @@ function getCententsPage(params, bool) {  //填报进度
                 if (name.getAttribute('name') == 'choice') {
                     if (document.getElementsByTagName('input')[index].getAttribute('checked')) {
                         nextId = document.getElementsByTagName('input')[index].getAttribute('data-lastId');
-                        prevId = document.getElementsByTagName('input')[index].getAttribute('data-topId');
                         next.setAttribute('data-value', nextId);  //下一步
-                        prev.setAttribute('data-value', prevId);   //上一步
                         radioVal = document.getElementsByTagName('input')[index].parentNode.childNodes[2].innerHTML || -1; // 选择题的答案
                     }
                 }
@@ -343,9 +309,7 @@ function getCententsPage(params, bool) {  //填报进度
 
 function checkedBox(params) {  //切换选择项目的任务继续Page ID fBizJ8
     nextId = params.lastId;
-    prevId = index;
     next.setAttribute('data-value', nextId);
-    prev.setAttribute('data-value', prevId);
     radioVal = params.key || -1; // 选择题的答案
 }
 
@@ -394,7 +358,7 @@ function createQuestion(params) {   //提交填报进度
         questionType: _type_,  //问题类型  1-展示页面,2-选择题,3-填空题,4-图片上传,5-物料题
         question: title.textContent,  //问题标题
         answerVal: centent.textContent + `$${sessionStorage.getItem('PageIds')}`,  //页面所有答案文本  以及上一页内容的ID
-        answer: radioVal,  //回显答案
+        answer: radioVal +`$`+ prev.getAttribute('data-value'),  //回显答案  + 上一页的ID地址
         answerPic: _pic, //图片保存
         isEnd: title.innerHTML == `本次维护结束` ? 1 : 0  //流程是否结束
     };
@@ -437,12 +401,13 @@ function searchQuerytion(params) {  //查询特定下标的题目/答案
         .done(response => {
             try {
                 if (response.statusCode.status == 6666) {
+                    sessionStorage.setItem('_page_', response.answer.split('$')[1]);
                     json.forEach($e => {
                         if ($e.pageId == centent.getAttribute('data-page')) {
                             $e.question.choice.forEach(($_, eq) => {  //选项列表
                                 document.querySelectorAll('input[name=choice]').forEach(_inp => {
                                     let _pert = _inp.parentNode;
-                                    if (_pert.childNodes[2].textContent.trim() == response.answer) {
+                                    if (_pert.childNodes[2].textContent.trim() == response.answer.split('$')[0]) {
                                         _inp.setAttribute('checked', 'checked');
                                     }
                                 })
@@ -454,7 +419,7 @@ function searchQuerytion(params) {  //查询特定下标的题目/答案
                             };
 
                             if (response.questionIndex == 15 || response.questionIndex == 16 || response.questionIndex == 18) {  //特定的文本答案
-                                Object.values(JSON.parse(response.answer)).forEach((nameValue, index) => {
+                                Object.values(JSON.parse(response.answer.split('$')[0])).forEach((nameValue, index) => {
                                     document.querySelectorAll('input._int_')[index].value = nameValue;
                                 })
                             }
