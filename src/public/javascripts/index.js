@@ -36,7 +36,8 @@ let httpData = 'https://case.cbcoffee.cn/',
     axios = require('axios'); //全局;
 
 document.addEventListener("DOMContentLoaded", function () {
-    if ( assign.hasFlow == +true ||sessionStorage.getItem('hasFlow') != +true) {  //不存在未完成的运维流程
+    sessionStorage.getItem('hasFlow') ? null : sessionStorage.setItem('hasFlow', assign.hasFlow);
+    if ( sessionStorage.getItem('hasFlow') != +true) {  //不存在未完成的运维流程
         json.forEach($e => {
             if ($e.pageId == +false) {
                 index = 0;
@@ -275,7 +276,7 @@ function getCententsPage(params, bool) {  //填报进度
                     if (document.getElementsByTagName('input')[index].getAttribute('checked')) {
                         nextId = document.getElementsByTagName('input')[index].getAttribute('data-lastId');
                         next.setAttribute('data-value', nextId);  //下一步
-                        radioVal = document.getElementsByTagName('input')[index].parentNode.childNodes[2].innerHTML || -1; // 选择题的答案
+                        radioVal = document.getElementsByTagName('input')[index].parentNode.childNodes[2].innerHTML || -1; // 选择题的默认答案
                     }
                 }
             });
@@ -310,24 +311,27 @@ function getCententsPage(params, bool) {  //填报进度
 function checkedBox(params) {  //切换选择项目的任务继续Page ID fBizJ8
     nextId = params.lastId;
     next.setAttribute('data-value', nextId);
-    radioVal = params.key || -1; // 选择题的答案
+    radioVal = params.key; // 选择题的答案
 }
 
 function createQuestion(params) {   //提交填报进度
-    let _type_ = centent.getAttribute('data-type'), _pic = -1;
+    let _type_ = centent.getAttribute('data-type'), _pic = -1, _obj_Data_val = -1;
     switch (_type_) {
         case '1':  //1-展示页面
-            radioVal = -1;
+            _obj_Data_val = -1;
             break;
         case '2':   //1-选择题
-            radioVal = radioVal;
+            _obj_Data_val = radioVal;
             break;
         case '3':   //1-填空题
             let _text = {};
             document.querySelectorAll('._int_').forEach((_params, _index) => {
                 _text[_index + 1] = _params.value;
+                if(_params.value == ""){  //存在空值
+                    //return false;
+                }
             });
-            radioVal = JSON.stringify(_text);
+            _obj_Data_val = JSON.stringify(_text);
             break;
         case '4':   //1-图片上传
             let _img = [];
@@ -336,7 +340,7 @@ function createQuestion(params) {   //提交填报进度
             });
             _pic = _img.join();
             if (document.querySelectorAll('textarea').length > 0) {
-                radioVal = document.querySelectorAll('textarea')[0].value;
+                _obj_Data_val = document.querySelectorAll('textarea')[0].value;
             }
             break;
         case '5':   //1-物料题
@@ -344,7 +348,7 @@ function createQuestion(params) {   //提交填报进度
             document.querySelectorAll('._int_').forEach((_params, _index) => {
                 _obj[(_index + 1)] = _params.value;
             });
-            radioVal = JSON.stringify(_obj);
+            _obj_Data_val = JSON.stringify(_obj);
             break;
         default:
             console.log('其他！');
@@ -358,7 +362,7 @@ function createQuestion(params) {   //提交填报进度
         questionType: _type_,  //问题类型  1-展示页面,2-选择题,3-填空题,4-图片上传,5-物料题
         question: title.textContent,  //问题标题
         answerVal: centent.textContent + `$${sessionStorage.getItem('PageIds')}`,  //页面所有答案文本  以及上一页内容的ID
-        answer: radioVal +`$`+ prev.getAttribute('data-value'),  //回显答案  + 上一页的ID地址
+        answer: _obj_Data_val +`$`+ prev.getAttribute('data-value'),  //回显答案  + 上一页的ID地址
         answerPic: _pic, //图片保存
         isEnd: title.innerHTML == `本次维护结束` ? 1 : 0  //流程是否结束
     };
